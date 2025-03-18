@@ -1,0 +1,19 @@
+# Competitive Research Analysis Report
+
+**Report Period:** {{ period }}
+
+{% for update in updates %}
+### Competitor: {{ update.competitor_name }}
+- **Update Type:** {{ update.update_type }}
+- **Date:** {{ update.date.strftime("%Y-%m-%d") if update.date else "N/A" }}
+- **Description:** {{ update.description }}
+- **Source:** [Link]({{ update.source_url }})
+{% endfor %}
+
+## Strategic Summary
+{{ summary }}
+
+## Recommendations
+Based on the above data, consider reviewing your competitive strategy, adjusting your pricing and promotional efforts, and monitoring competitor moves closely.
+
+*Report generated at: {{ generated_at }}*
