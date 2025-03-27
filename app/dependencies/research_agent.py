@@ -1,5 +1,5 @@
-from langchain.agents import AgentExecutor, initialize_agent, AgentType
-from langchain_community.agent_toolkits.load_tools import load_tools
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 from typing import List
@@ -19,10 +19,15 @@ class CompetitiveResearchAgent:
                 model="gemma2-9b-it",
                 api_key=groq_api_key
             )
-            # Load the SerpAPI tool directly via load_tools.
-            self.tools = load_tools(
-                ["serpapi"], llm=self.llm, serpapi_api_key=settings.SERPAPI_API_KEY
-            )
+
+            # Replace SerpAPI with Tavily Search
+            self.tools = [
+                TavilySearchResults(
+                    max_results=5,  # Number of search results to return
+                    api_key=settings.TAVILY_API_KEY  # Use Tavily API key from settings
+                )
+            ]
+
             self.agent = self._create_agent()
         except Exception as e:
             raise APIKeyError(f"Error initializing agent: {str(e)}")
@@ -41,7 +46,7 @@ class CompetitiveResearchAgent:
             raw_template, _, _ = env.loader.get_source(
                 env, "agent_prompt.jinja")
 
-        # Create a PromptTemplate that requires "input" and "agent_scratchpad" as dynamic variables.
+            # Create a PromptTemplate that requires "input" and "agent_scratchpad" as dynamic variables.
             prompt = PromptTemplate(
                 template=raw_template,
                 input_variables=["input", "agent_scratchpad",
@@ -52,15 +57,23 @@ class CompetitiveResearchAgent:
                     "agent_scratchpad": ""  # default value for scratchpad
                 }
             )
-            agent = initialize_agent(
+
+            # Create a reactive agent using create_react_agent instead of initialize_agent
+            react_agent = create_react_agent(
                 llm=self.llm,
                 tools=self.tools,
-                prompt=prompt,
-                agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-                verbose=True
+                prompt=prompt
             )
 
-            return agent
+            # Wrap the agent in an AgentExecutor
+            agent_executor = AgentExecutor(
+                agent=react_agent,
+                tools=self.tools,
+                verbose=True,
+                handle_parsing_errors=True
+            )
+
+            return agent_executor
         except Exception as e:
             raise ModelProcessingError(f"Error creating agent: {str(e)}")
 
